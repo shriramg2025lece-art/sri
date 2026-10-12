@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>R-2R DAC with Op-Amp Output Stage</title>
+<style>
+:root{--bg:#edf2ef;--ink:#12221c;--mut:#4b5f56;--card:#fff;--ac:#0b6e4f;--bl:#1d4ed8;--ln:#c5d3cb;--wa:#fff4d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg) linear-gradient(var(--ln) 1px,transparent 1px) 0 0/100% 28px;font:16px/1.6 system-ui,Segoe UI,sans-serif;color:var(--ink)}
+h1,h2,h3{font-family:Georgia,serif;line-height:1.2}
+header{padding:28px 5vw 12px}header h1{font-size:clamp(1.6rem,4vw,2.6rem);margin:0 0 6px}
+header p{margin:4px 0;max-width:75ch;color:var(--mut)}
+nav{position:sticky;top:0;background:var(--ink);display:flex;flex-wrap:wrap;gap:2px 14px;padding:8px 5vw;z-index:5}
+nav a{color:#d6ece2;text-decoration:none;font-size:.9rem}nav a:hover,nav a:focus{color:#fff;text-decoration:underline}
+main{padding:0 5vw 40px;max-width:1100px;margin:auto}
+section{background:var(--card);border:1px solid var(--ln);border-left:5px solid var(--ac);border-radius:6px;padding:18px 22px;margin:22px 0}
+section h2{margin-top:0}
+.eq{font-family:"Cambria Math",Georgia,serif;background:#f3f8f5;border:1px solid var(--ln);padding:8px 12px;margin:8px 0;overflow-x:auto;font-size:1.05rem}
+.note{background:var(--wa);border-left:4px solid #d9a400;padding:8px 12px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:8px 0}th,td{border:1px solid var(--ln);padding:5px 8px;text-align:left}th{background:#e3ece7}
+.tw{overflow-x:auto}svg{max-width:100%;height:auto}
+.ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:8px 0}
+input[type=number],select{padding:4px;width:84px;font:inherit}button{background:var(--ac);color:#fff;border:0;border-radius:4px;padding:7px 14px;font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--bl);outline-offset:2px}
+.big{font:700 2rem Georgia,serif;color:var(--ac)}
+details{border:1px solid var(--ln);border-radius:4px;padding:6px 12px;margin:6px 0}summary{cursor:pointer;font-weight:600}
+.q{border:1px solid var(--ln);border-radius:4px;padding:10px 14px;margin:10px 0}.q label{display:block;padding:2px 0;cursor:pointer}
+.q.ok{border-color:#0b6e4f;background:#e8f6ef}.q.bad{border-color:#b42318;background:#fdecea}.q.na{border-color:#d9a400;background:var(--wa)}
+.ex{display:none;margin-top:6px;font-size:.93rem}.tag{font-size:.75rem;background:#e3ece7;border-radius:10px;padding:1px 8px}
+@media print{nav,button,.ctl{display:none}body{background:#fff}section{break-inside:avoid;border-left:1px solid #999}details{display:block}details>*{display:block}}
+</style></head><body>
+<header><h1>3-bit / 4-bit R-2R DAC with Op-Amp Output Stage</h1>
+<p><b>Analog Electronics</b> &rsaquo; Unit: Operational Amplifier &rsaquo; Topic: R-2R ladder digital-to-analog converter. B.E./B.Tech ECE, GATE and core-electronics interview preparation.</p>
+<p><b>You will be able to:</b> design an R-2R ladder, derive V<sub>out</sub>, compute resolution and full scale, verify outputs for every code, and answer GATE/interview questions on it.</p></header>
+<nav><a href="#intro">Intro</a><a href="#circuit">Circuit &amp; Simulator</a><a href="#theory">Working &amp; Equations</a><a href="#wave">Waveform &amp; Table</a><a href="#solved">Solved Problems</a><a href="#gate">GATE Practice</a><a href="#interview">Interview</a><a href="#apps">Applications</a><a href="#quiz">Topic Quiz</a><a href="#revise">Revision</a></nav>
+<main>
+
+<section id="intro"><h2>1. Introduction</h2>
+<p>A <b>DAC</b> converts an N-bit binary word into an analog voltage. The <b>R-2R ladder</b> does this using only two resistor values, R and 2R, so matching is easy in integrated circuits. An <b>op-amp</b> follows the ladder to buffer it (the ladder has Thevenin resistance R and must not be loaded) and optionally to scale it.</p>
+<p><b>Prerequisites:</b> Thevenin/superposition, non-inverting amplifier, voltage follower. <b>Terms:</b> resolution (LSB = V<sub>ref</sub>/2<sup>N</sup>), full-scale output, monotonicity, DNL/INL, settling time, glitch.</p>
+<p><b>Design choice.</b> Your question mentions both 3-bit and 4-bit. The simulator below supports both. Default design: <b>4-bit, V<sub>ref</sub> = 5 V, R = 10 kΩ, 2R = 20 kΩ, voltage-mode ladder, non-inverting op-amp stage</b>.</p>
+<p><b>Types:</b> weighted-resistor DAC (needs 2<sup>N-1</sup> resistor ratio), R-2R voltage-mode (this page), R-2R current-mode / inverted (virtual-ground output), and string (Kelvin-divider) DACs.</p></section>
+
+<section id="circuit"><h2>2. Circuit diagram and live simulator</h2>
+<div class="ctl"><label>Bits <select id="nb"><option value="3">3</option><option value="4" selected>4</option></select></label>
+<label>V<sub>ref</sub> (V) <input type="number" id="vr" value="5" step="0.1" min="0.1"></label>
+<label>R<sub>f</sub>/R<sub>g</sub> <input type="number" id="rg" value="0" step="0.5" min="0"></label>
+<span>(0 = voltage follower, gain 1)</span></div>
+<p>Click a switch box to toggle a bit between V<sub>ref</sub> (1) and GND (0).</p>
+<div class="tw"><svg id="ckt" role="img" aria-label="R-2R DAC circuit"></svg></div>
+<p>Code <b id="cd">0000</b> = <b id="dec">0</b> &rarr; ladder node V<sub>L</sub> = <b id="vl">0</b> V &rarr; <span class="big" id="vo">0.000 V</span></p>
+<table><tr><th>Component</th><th>Function</th></tr>
+<tr><td>Series R (10 kΩ)</td><td>Connects adjacent ladder nodes; halves the signal each step toward the LSB.</td></tr>
+<tr><td>Shunt 2R (20 kΩ)</td><td>One per bit; connects to V<sub>ref</sub> or GND through its switch.</td></tr>
+<tr><td>Termination 2R</td><td>Extra 2R from the LSB node to GND so every node sees 2R to its left.</td></tr>
+<tr><td>Op-amp (+ input)</td><td>High input impedance buffers the ladder (R<sub>th</sub> = R).</td></tr>
+<tr><td>R<sub>f</sub>, R<sub>g</sub></td><td>Set gain 1 + R<sub>f</sub>/R<sub>g</sub>. Omit both for a follower.</td></tr></table>
+<p class="note">Simulation: no Multisim screenshot was attached, so none is embedded and no measured results are claimed. Build the same circuit in Multisim (ideal op-amp, 10k/20k resistors, 5 V and 0 V sources) and compare with the table in section 4.</p></section>
+
+<section id="theory"><h2>3. Working principle and equations</h2>
+<h3>Operation</h3>
+<p>Looking left from any node, the resistance is 2R: the last node sees 2R (terminator) in parallel with its own 2R branch = R, plus the series R = 2R, and this repeats. So every node has two equal 2R paths, which means each bit's contribution halves as it moves one node toward the LSB. The MSB, closest to the op-amp, contributes V<sub>ref</sub>/2 at the output.</p>
+<h3>Derivation (superposition)</h3>
+<p>Start at the LSB node. Its 2R switch branch (V<sub>ref</sub>·b<sub>0</sub>) and the 2R terminator form a divider, giving a Thevenin source V<sub>ref</sub>·b<sub>0</sub>/2 behind R. Adding the series R gives 2R, which together with the next 2R switch branch (b<sub>1</sub>) again forms an equal divider: the previous contribution is halved and b<sub>1</sub>·V<sub>ref</sub>/2 is added, still behind R. Repeating up to the MSB node gives V<sub>L</sub> = V<sub>ref</sub>(b<sub>N-1</sub>/2 + b<sub>N-2</sub>/4 + …), by superposition:</p>
+<div class="eq">V<sub>L</sub> = V<sub>ref</sub> ( b<sub>N-1</sub>/2 + b<sub>N-2</sub>/4 + … + b<sub>0</sub>/2<sup>N</sup> ) = V<sub>ref</sub>·D / 2<sup>N</sup></div>
+<div class="eq">V<sub>out</sub> = (1 + R<sub>f</sub>/R<sub>g</sub>)·V<sub>ref</sub>·D / 2<sup>N</sup> &nbsp;&nbsp; (follower: gain = 1)</div>
+<div class="eq">LSB = V<sub>ref</sub>/2<sup>N</sup> &nbsp;|&nbsp; V<sub>FS(max code)</sub> = V<sub>ref</sub>(1 − 2<sup>-N</sup>) &nbsp;|&nbsp; R<sub>th</sub> = R &nbsp;|&nbsp; dB = 20 log<sub>10</sub>(gain)</div>
+<p>Variables: D = decimal code (0 to 2<sup>N</sup>−1), N = bits, V<sub>ref</sub> in volts, R in ohms. Valid for an ideal op-amp with negligible input current, ideal switches and a ladder not loaded directly. <b>Limits:</b> D = 0 gives 0 V; the output never reaches V<sub>ref</sub>. For the inverted (current-mode) ladder with virtual ground: V<sub>out</sub> = −(R<sub>f</sub>/R)·V<sub>ref</sub>·D/2<sup>N</sup>.</p>
+<h3>Practical considerations and misconceptions</h3>
+<ul><li>Gain above 1 needs op-amp supply above the output swing (5 V reference with gain 2 needs more than 9.4 V, not a 5 V rail).</li>
+<li>Misconception: the output reaches V<sub>ref</sub> at all-ones. It reaches V<sub>ref</sub>(1−2<sup>-N</sup>).</li>
+<li>Misconception: any resistor error is equal. MSB-side errors dominate, so MSB resistors need the best matching.</li>
+<li>Switch on-resistance adds to 2R, so use switch widths scaled by bit weight or keep R large relative to R<sub>on</sub>.</li>
+<li>DC vs AC: DC sets the code-to-voltage map. AC (code changes) shows glitches and settling set by op-amp slew rate and bandwidth.</li></ul></section>
+
+<section id="wave"><h2>4. Output staircase and verification table</h2>
+<p><i>Illustrative plot generated from the equation (not a measured simulation).</i> Counting the code 0 &rarr; max gives an ideal staircase.</p>
+<div class="tw"><svg id="stair" viewBox="0 0 640 260" role="img" aria-label="Output staircase"></svg></div>
+<div class="tw"><table id="tbl"></table></div></section>
+
+<section id="solved"><h2>5. Solved problems</h2>
+<details open><summary>Problem 1 (Easy): 4-bit, V<sub>ref</sub> = 5 V, follower, code 1011. Find V<sub>out</sub>.</summary>
+<p>Formula: V<sub>out</sub> = V<sub>ref</sub>·D/2<sup>N</sup>. D = 1011<sub>2</sub> = 11. V<sub>out</sub> = 5 V × 11/16 = <b>3.4375 V</b>. Check by weights: 5(1/2 + 1/8 + 1/16) = 2.5 + 0.625 + 0.3125 = 3.4375 V. It is 11 LSB steps of 0.3125 V.</p></details>
+<details><summary>Problem 2 (Moderate): 3-bit, V<sub>ref</sub> = 5 V, R<sub>f</sub> = R<sub>g</sub>. Find the LSB, full scale and V<sub>out</sub> for 101.</summary>
+<p>Ladder LSB = 5/8 = 0.625 V. Gain = 1 + 1 = 2, so output step = 1.25 V. D = 5: V<sub>out</sub> = 2 × 5 × 5/8 = <b>6.25 V</b>. Max (111) = 2 × 5 × 7/8 = 8.75 V. Interpretation: the op-amp supply must exceed 8.75 V plus its headroom.</p></details>
+<details><summary>Problem 3 (GATE-style): a 4-bit R-2R DAC (follower) gives 6.25 V for 1010. Find V<sub>ref</sub> and the output for 0110.</summary>
+<p>D = 10: 6.25 = V<sub>ref</sub> × 10/16 &rArr; V<sub>ref</sub> = <b>10 V</b>. For 0110, D = 6: V<sub>out</sub> = 10 × 6/16 = <b>3.75 V</b>. Shortcut: V<sub>out</sub> ∝ D, so 6.25 × 6/10 = 3.75 V. LSB = 0.625 V.</p></details></section>
+
+<section id="gate"><h2>6. GATE practice (original questions)</h2>
+<p>These are original practice questions, not previous-year GATE questions. Answer, check, and read the explanation after scoring.</p>
+<div id="gq"></div><button id="gc">Check answers</button> <button id="gr">Reset</button> <b id="gs"></b></section>
+
+<section id="interview"><h2>7. Core-company interview questions</h2>
+<details><summary>1. Why R-2R instead of a binary-weighted DAC?</summary>Only two values, and a ratio of 2:1 is easy to match on-chip. A weighted DAC needs a 2<sup>N-1</sup>:1 spread, impractical beyond about 8 bits.</details>
+<details><summary>2. Why is the op-amp needed at the output?</summary>The ladder has output resistance R. A load R<sub>L</sub> divides the voltage and causes gain error. The op-amp has high input impedance and low output impedance.</details>
+<details><summary>3. Why the extra 2R terminator at the LSB end?</summary>It makes every node see 2R to its left, which preserves the binary halving. Without it the LSB weight is wrong.</details>
+<details><summary>4. Which bits are most sensitive to resistor mismatch?</summary>The MSBs. For monotonicity, MSB error must be below 1 LSB, so it sets the matching requirement.</details>
+<details><summary>5. Output is stuck at 0 V for all codes. How do you debug?</summary>Check the V<sub>ref</sub> source, then the switch drive, then the op-amp supplies, then whether + input is shorted to ground and whether the feedback is connected correctly.</details>
+<details><summary>6. What causes glitches at 0111 &rarr; 1000?</summary>All bits flip, and unequal switch delays create a brief wrong code (such as 1111 or 0000). Fixes: deglitch sample-and-hold, low-pass filter, segmented DAC.</details>
+<details><summary>7. How do you measure DNL and INL in the lab?</summary>Step through every code with a DMM, compute the step minus the ideal LSB (DNL), and compare each output with the best-fit straight line (INL).</details>
+<details><summary>8. Voltage-mode vs current-mode (inverted) ladder?</summary>In the inverted ladder, node voltages stay near 0 V (virtual ground), so switch resistance matters less and speed is better. The output is inverted: &minus;(R<sub>f</sub>/R)V<sub>ref</sub>D/2<sup>N</sup>.</details>
+<details><summary>9. How does op-amp offset affect the DAC?</summary>It adds a constant error (gained by 1+R<sub>f</sub>/R<sub>g</sub>) at all codes, which shows as zero-code error. Calibrate or choose a low-offset amplifier.</details>
+<details><summary>10. Simulation: output looks right at DC but slow on code changes. Why?</summary>The op-amp slew rate and bandwidth, the ladder R times the input capacitance, or switch charge. Check the transient settling time to ½ LSB.</details>
+<p class="note"><b>Industry view:</b> R-2R ladders appear in waveform generators, trim DACs, audio converters and as the DAC inside SAR ADCs. Teams care about matching, settling and glitch energy.</p></section>
+
+<section id="apps"><h2>8. Applications and industry relevance</h2>
+<ul><li><b>Data acquisition:</b> SAR ADCs use a DAC internally; programmable offset and gain trims.</li>
+<li><b>Signal and audio generation:</b> arbitrary waveform output, tone generation on microcontrollers.</li>
+<li><b>Control and calibration:</b> setpoint voltages for power supplies and bias generators.</li>
+<li><b>Testing challenges:</b> resistor matching, switch resistance, reference noise, glitches.</li>
+<li><b>Roles:</b> analog/mixed-signal design, hardware validation, test engineering, embedded hardware.</li></ul></section>
+
+<section id="quiz"><h2>9. Topic quiz (10 questions)</h2><div id="tq"></div>
+<button id="tc">Check answers</button> <button id="tr">Reset quiz</button> <b id="ts"></b></section>
+
+<section id="revise"><h2>10. Revision notes</h2>
+<table><tr><th>Item</th><th>Formula or fact</th></tr>
+<tr><td>Output</td><td>V<sub>out</sub> = (1+R<sub>f</sub>/R<sub>g</sub>) V<sub>ref</sub> D/2<sup>N</sup></td></tr>
+<tr><td>LSB / max output</td><td>V<sub>ref</sub>/2<sup>N</sup> / V<sub>ref</sub>(1−2<sup>-N</sup>)</td></tr>
+<tr><td>Levels</td><td>2<sup>N</sup> codes, 2<sup>N</sup>−1 steps</td></tr>
+<tr><td>Ladder R<sub>th</sub></td><td>R</td></tr>
+<tr><td>Inverted ladder</td><td>V<sub>out</sub> = −(R<sub>f</sub>/R) V<sub>ref</sub> D/2<sup>N</sup></td></tr></table>
+<table><tr><th>Type</th><th>Resistor spread</th><th>Notes</th></tr>
+<tr><td>Weighted</td><td>2<sup>N-1</sup> : 1</td><td>Poor matching for large N</td></tr>
+<tr><td>R-2R</td><td>2 : 1</td><td>Easy to match, standard in ICs</td></tr>
+<tr><td>String</td><td>2<sup>N</sup> equal R</td><td>Guaranteed monotonic, large area</td></tr></table>
+<p><b>Memory aid:</b> MSB = V<sub>ref</sub>/2, then halve each bit. <b>Errors:</b> forgetting the terminator, using 2<sup>N</sup>−1 as the divisor, forgetting op-amp gain, supply too low for the gain.</p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id),NS="http://www.w3.org/2000/svg";let bits=[0,0,0,0];
+const N=()=>+$("nb").value,V=()=>+$("vr").value,G=()=>1+(+$("rg").value);
+const D=()=>bits.slice(0,N()).reduce((a,b,i)=>a+b*2**i,0);
+function el(t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e}
+function draw(){const n=N(),s=$("ckt");s.innerHTML="";const x=k=>70+k*105,ox=x(n-1)+90,W=ox+190;
+s.setAttribute("viewBox",`0 0 ${W} 250`);s.setAttribute("width",W);const L=(a,b,c,d)=>s.appendChild(el("line",{x1:a,y1:b,x2:c,y2:d,stroke:"#12221c","stroke-width":2}));
+const Rr=(cx,cy,w,h,t)=>{s.appendChild(el("rect",{x:cx-w/2,y:cy-h/2,width:w,height:h,fill:"#fff",stroke:"#12221c","stroke-width":2}));s.appendChild(el("text",{x:cx,y:cy+4,"text-anchor":"middle","font-size":11},t))};
+const gnd=(gx,gy)=>{L(gx,gy,gx,gy+6);L(gx-10,gy+6,gx+10,gy+6);L(gx-6,gy+10,gx+6,gy+10);L(gx-2,gy+14,gx+2,gy+14)};
+L(30,80,x(n-1),80);L(30,80,30,95);Rr(30,115,20,40,"2R");L(30,135,30,150);gnd(30,150);
+for(let k=0;k<n;k++){s.appendChild(el("circle",{cx:x(k),cy:80,r:3,fill:"#12221c"}));if(k<n-1){Rr((x(k)+x(k+1))/2,80,36,18,"R")}
+L(x(k),80,x(k),95);Rr(x(k),115,20,40,"2R");L(x(k),135,x(k),150);
+const g=el("g",{style:"cursor:pointer",tabindex:0,role:"button","aria-label":`Toggle bit B${k}`});
+g.appendChild(el("rect",{x:x(k)-30,y:150,width:60,height:34,rx:4,fill:bits[k]?"#0b6e4f":"#cfd9d3",stroke:"#12221c"}));
+g.appendChild(el("text",{x:x(k),y:165,"text-anchor":"middle","font-size":12,fill:bits[k]?"#fff":"#12221c"},`B${k}${k==0?" (LSB)":k==n-1?" (MSB)":""}`));
+g.appendChild(el("text",{x:x(k),y:179,"text-anchor":"middle","font-size":11,fill:bits[k]?"#fff":"#12221c"},bits[k]?"Vref":"GND"));
+g.onclick=()=>{bits[k]^=1;upd()};g.onkeydown=e=>{if(e.key==" "||e.key=="Enter"){e.preventDefault();g.onclick()}};s.appendChild(g)}
+L(x(n-1),80,ox,80);s.appendChild(el("text",{x:x(n-1)+8,y:68,"font-size":11},"V_L"));
+s.appendChild(el("polygon",{points:`${ox},50 ${ox},150 ${ox+90},100`,fill:"#fff",stroke:"#12221c","stroke-width":2}));
+s.appendChild(el("text",{x:ox+6,y:84,"font-size":14},"+"));s.appendChild(el("text",{x:ox+6,y:134,"font-size":14},"−"));
+L(ox-25,130,ox,130);L(ox-25,130,ox-25,160);L(ox-25,160,ox-25,185);Rr(ox-25,200,16,26,"Rg");L(ox-25,213,ox-25,222);gnd(ox-25,222);
+L(ox+90,100,ox+125,100);L(ox+125,100,ox+125,160);L(ox+125,160,ox-25,160);
+s.appendChild(el("rect",{x:ox+50,y:152,width:36,height:16,fill:"#fff",stroke:"#12221c","stroke-width":2}));s.appendChild(el("text",{x:ox+68,y:164,"text-anchor":"middle","font-size":11},"Rf"));
+s.appendChild(el("text",{x:ox+130,y:96,"font-size":13,"font-weight":700},"Vout"));
+s.appendChild(el("text",{x:10,y:240,"font-size":11},"Vref = switch high level. Rf and Rg may be omitted (short Rf, remove Rg) for a follower."))}
+function upd(){const n=N(),d=D(),vl=V()*d/2**n;$("cd").textContent=bits.slice(0,n).map((b,i)=>b).reverse().join("");$("dec").textContent=d;$("vl").textContent=vl.toFixed(4);$("vo").textContent=(vl*G()).toFixed(4)+" V";draw()}
+function table(){const n=N(),t=$("tbl");let h="<tr><th>Code</th><th>D</th><th>V<sub>L</sub> (V)</th><th>V<sub>out</sub> (V)</th></tr>";
+for(let d=0;d<2**n;d++)h+=`<tr><td>${d.toString(2).padStart(n,"0")}</td><td>${d}</td><td>${(V()*d/2**n).toFixed(4)}</td><td>${(V()*d/2**n*G()).toFixed(4)}</td></tr>`;t.innerHTML=h;
+const s=$("stair"),m=2**n,mx=V()*G()*(m-1)/m||1,w=560/m;let p="",a="";s.innerHTML="";
+s.innerHTML='<line x1="50" y1="220" x2="620" y2="220" stroke="#12221c"/><line x1="50" y1="20" x2="50" y2="220" stroke="#12221c"/><text x="300" y="248" text-anchor="middle" font-size="12">Input code (0 to '+(m-1)+')</text><text x="14" y="120" font-size="12" transform="rotate(-90 14 120)">Vout (V)</text>';
+for(let d=0;d<m;d++){const y=220-200*(d/(m-1)),x0=55+d*w;p+=(d?"L":"M")+x0+" "+y+" L"+(x0+w)+" "+y+" ";}
+s.innerHTML+=`<path d="${p}" fill="none" stroke="#1d4ed8" stroke-width="2.5"/><text x="56" y="14" font-size="11">max = ${mx.toFixed(3)} V, step = ${(V()*G()/m).toFixed(4)} V</text>`}
+$("nb").onchange=()=>{upd();table()};$("vr").oninput=$("rg").oninput=()=>{upd();table()};
+function quiz(box,data,bc,br,sc){const root=$(box);root.innerHTML=data.map((q,i)=>`<div class="q" id="${box}${i}"><b>Q${i+1}.</b> ${q.d?`<span class="tag">${q.d}</span> `:""}${q.q}${q.o.map((o,j)=>`<label><input type="radio" name="${box}${i}" value="${j}"> ${"ABCD"[j]}. ${o}</label>`).join("")}<div class="ex"></div></div>`).join("");
+$(bc).onclick=()=>{let s=0,u=0;data.forEach((q,i)=>{const d=$(box+i),c=d.querySelector("input:checked"),e=d.querySelector(".ex");let st="na",m="Unanswered. ";if(c){if(+c.value===q.a){s++;st="ok";m="Correct. "}else{st="bad";m="Incorrect. "}}else u++;d.className="q "+st;e.style.display="block";e.innerHTML=`<b>${m}Answer: ${"ABCD"[q.a]}.</b> ${q.e}`});$(sc).textContent=`Score: ${s}/${data.length} (${Math.round(100*s/data.length)}%)${u?`, ${u} unanswered`:""}`};
+$(br).onclick=()=>{root.querySelectorAll("input").forEach(i=>i.checked=false);root.querySelectorAll(".q").forEach(d=>{d.className="q";d.querySelector(".ex").style.display="none"});$(sc).textContent=""}}
+quiz("gq",[
+{d:"Easy",q:"The main advantage of an R-2R ladder over a binary-weighted DAC is:",o:["Higher speed always","Only two resistor values are needed","No reference needed","Output is inverted"],a:1,e:"Ratio 2:1 is easy to match. Speed is not guaranteed."},
+{d:"Easy",q:"4-bit R-2R DAC, V<sub>ref</sub> = 8 V, follower, input 1100. V<sub>out</sub> =",o:["4 V","5 V","6 V","7.5 V"],a:2,e:"8 × 12/16 = 6 V."},
+{d:"Easy",q:"An 8-bit DAC with V<sub>ref</sub> = 5.12 V has LSB =",o:["10 mV","20 mV","40 mV","5 mV"],a:1,e:"5.12/256 = 0.02 V = 20 mV."},
+{d:"Moderate",q:"The Thevenin resistance of the unloaded ladder at its output node is:",o:["R/2","R","2R","3R"],a:1,e:"Every node has 2R || 2R = R looking back through the ladder. This is why a buffer is required."},
+{d:"Moderate",q:"Ladder output = 1.25 V, op-amp non-inverting with R<sub>f</sub> = 3 kΩ, R<sub>g</sub> = 1 kΩ. V<sub>out</sub> =",o:["3.75 V","5 V","1.25 V","6.25 V"],a:1,e:"Gain = 1 + 3 = 4, so 1.25 × 4 = 5 V. Trap: using gain 3."},
+{d:"Moderate",q:"Maximum output of a 3-bit DAC with V<sub>ref</sub> = 4 V (follower) is:",o:["4 V","3.5 V","3 V","3.75 V"],a:1,e:"4 × 7/8 = 3.5 V. It never reaches V<sub>ref</sub>."},
+{d:"Moderate",q:"Which resistor mismatch most affects monotonicity?",o:["LSB branch","Terminator","MSB-side resistors","Op-amp R<sub>g</sub>"],a:2,e:"The MSB carries the largest weight, so its error can exceed one LSB."},
+{d:"Moderate",q:"The op-amp after the ladder mainly prevents:",o:["Quantization","Loading error from R<sub>L</sub>","Aliasing","Reference drift"],a:1,e:"Output resistance R would form a divider with R<sub>L</sub>."},
+{d:"Difficult",q:"A 10-bit DAC has V<sub>ref</sub> = 10.24 V (follower). Which code gives 3.00 V?",o:["256","300","307","512"],a:1,e:"LSB = 10.24/1024 = 10 mV. 3.00/0.01 = 300."},
+{d:"Difficult",q:"Inverted ladder, V<sub>ref</sub> = 5 V, R<sub>f</sub> = R, 3-bit, code 110. V<sub>out</sub> =",o:["+3.75 V","−3.125 V","−3.75 V","−5 V"],a:2,e:"V<sub>out</sub> = −5 × 6/8 = −3.75 V."}],"gc","gr","gs");
+quiz("tq",[
+{q:"The R-2R ladder uses resistors of values:",o:["R and 2R","R and 4R","R only","2R and 4R"],a:0,e:"By definition."},
+{q:"3-bit DAC, V<sub>ref</sub> = 4 V, follower, code 011. V<sub>out</sub> =",o:["1 V","1.5 V","2 V","3 V"],a:1,e:"4 × 3/8 = 1.5 V."},
+{q:"The step (LSB) of a 4-bit DAC as a fraction of V<sub>ref</sub> is:",o:["1/4","1/8","1/15","1/16"],a:3,e:"1/2<sup>N</sup> = 1/16 = 6.25%."},
+{q:"The op-amp in this circuit provides:",o:["Buffering and optional gain","Digital decoding","Reference generation","Filtering only"],a:0,e:"High input impedance, low output impedance."},
+{q:"The extra 2R at the LSB end:",o:["Reduces power","Terminates the ladder so each node sees 2R","Sets gain","Is optional"],a:1,e:"Needed for binary weighting."},
+{q:"4-bit, V<sub>ref</sub> = 5 V, all ones, follower. V<sub>out</sub> =",o:["5 V","4.6875 V","4.375 V","5.3125 V"],a:1,e:"5 × 15/16 = 4.6875 V."},
+{q:"Counting the input code upward gives a:",o:["Sine wave","Staircase","Square wave","Triangle with no steps"],a:1,e:"Output increases by one LSB per code."},
+{q:"R<sub>f</sub> = R<sub>g</sub> in the non-inverting stage gives gain:",o:["1","2","0.5","∞"],a:1,e:"1 + R<sub>f</sub>/R<sub>g</sub> = 2."},
+{q:"Glitches are largest at:",o:["0000 to 0001","0101 to 0110","0111 to 1000","1110 to 1111"],a:2,e:"All bits change at the major carry."},
+{q:"Ideal output for code 0000 is:",o:["V<sub>ref</sub>/16","0 V","V<sub>ref</sub>","−V<sub>ref</sub>"],a:1,e:"Every switch connects to GND. Offset adds a small error in practice."}],"tc","tr","ts");
+upd();table();
+</script></body></html>
